@@ -7,7 +7,6 @@ import matplotlib.pyplot as plt
 from drone import Drone
 from environment import SearchEnv
 import config as cfg
-from failtracker import FailTracker
 
 def initialize_drones(num_drones, env, window_size):
     """Initialize drones at random positions that don't see the fire initially
@@ -65,10 +64,6 @@ def run_simulation():
     drone_window_size = cfg.OBSERVATION_WINDOW_SIZE
     drones = initialize_drones(cfg.NUM_DRONES, env, drone_window_size)
 
-    # Initialize FailTracker
-    tracker = FailTracker()
-    tracker.update(drones, 0) # Track initial state (t=0)
-
     # Main simulation loop
     for i in range(N):
         # Dynamic wind: 25% chance to change every 10 timesteps
@@ -106,16 +101,6 @@ def run_simulation():
                 if drone.drone_id != packet['sender_id']:
                     drone.receive_telemetry(packet)
 
-        # Update tracker with current state (after actions and communication)
-        tracker.update(drones, i + 1)
-
-        if tracker.failures:
-            print(60*"=")
-            print(60*"=")
-            print("Simulation stopped due to failure.")
-            print(60*"=")
-            print(60*"=")
-            break
     else:
         print(60*"=")
         print(60*"=")
@@ -123,10 +108,6 @@ def run_simulation():
         print(60*"=")
         print(60*"=")
 
-    # Finalize tracking
-    #tracker.check_timeout(env.fire_extinguished)
-    #tracker.save_data()
-    #tracker.plot_entropy()
     env.close()
 
 

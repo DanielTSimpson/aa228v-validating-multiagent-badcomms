@@ -6,6 +6,7 @@ import numpy as np
 from copy import deepcopy
 from environment import SearchEnv
 from belief import Belief     
+import config as cfg
 
 class Drone():
     """
@@ -16,6 +17,7 @@ class Drone():
         self.window_size = 0
         self.env = environment
         self.position = np.random.randint(0, self.env.grid_size, size=2)
+        self.budget = cfg.MAX_BUDGET
         self.belief_state = Belief(self.env.grid_size)
         
         self.time = 0
@@ -54,6 +56,14 @@ class Drone():
     def action(self, action):
         """Execute action and update state"""
         self.last_action = action
+        
+        # Deduct costs from budget
+        if action in [1, 2, 3, 4]: # Movement actions
+            step_cost += self.movement_cost
+        elif action == 5: # Communication action
+            step_cost += self.comm_cost
+        self.budget -= self.time_cost
+
         x = self.x
         y = self.y
         telemetry_packet = None
