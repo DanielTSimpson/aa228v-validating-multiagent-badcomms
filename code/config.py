@@ -8,7 +8,7 @@ Centralized place for all simulation parameters
 INITIAL_TIME = 0.0
 TIME_STEP = 0.05
 MAX_SIMULATION_TIME = 15.0
-MAX_BUDGET = 1000
+MAX_BUDGET = 1280
 RENDER_PAUSE = 0.2
 
 #  ===== Environment parameters ===== 

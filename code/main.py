@@ -6,6 +6,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from drone import Drone
 from environment import SearchEnv
+from failtracker import FailTracker
 import config as cfg
 
 def initialize_drones(num_drones, env, window_size):
@@ -41,7 +42,7 @@ def initialize_drones(num_drones, env, window_size):
     return drones
 
 
-def run_simulation():
+def run_simulation(trial_num, tracker, render=False):
     """
     Run the complete Dec-POMDP multi-agent simulation
     """
@@ -49,10 +50,10 @@ def run_simulation():
     t_0 = cfg.INITIAL_TIME
     dt = cfg.TIME_STEP
     t_f = cfg.MAX_SIMULATION_TIME
-    render_pause = cfg.RENDER_PAUSE
+    render_pause = cfg.RENDER_PAUSE if render else 0.0
 
     N = int((t_f - t_0) / dt)
-    print(f"Max {N} time steps (Dec-POMDP with Value Iteration)")
+    #print(f"Max {N} time steps (Dec-POMDP with Value Iteration)")
 
     # Initialize environment
     env = SearchEnv()
@@ -64,27 +65,44 @@ def run_simulation():
     drone_window_size = cfg.OBSERVATION_WINDOW_SIZE
     drones = initialize_drones(cfg.NUM_DRONES, env, drone_window_size)
 
+    failure_mode = 2 # Default to "Out of Time"
+    time_to_obj = N
+    total_comms = 0
+
     # Main simulation loop
     for i in range(N):
         # Dynamic wind: 25% chance to change every 10 timesteps
         if i > 0 and i % 10 == 0 and np.random.random() < 0.25:
             env.wind_direction = 2 * np.pi * np.random.random()
-            print(f"*** Wind changed direction to {env.wind_direction*180/np.pi:.1f} degrees ***")
+            if render:
+                print(f"*** Wind changed direction to {env.wind_direction*180/np.pi:.1f} degrees ***")
 
         # Render current state
-        env.render(drones)
-        plt.pause(render_pause)
+        if render:
+            env.render(drones)
+            plt.pause(render_pause)
+        
+        # Check for budget failure (Mode 1)
+        # If any drone runs out of budget, we consider it a failure for the team/mission
+        min_budget = min(d.budget for d in drones)
+        if min_budget <= 0:
+            failure_mode = 1
+            time_to_obj = i
+            break
         
         # Check if fire is extinguished
         if env.fire_extinguished:
-            print(60*"=")
-            print(60*"=")
-            print(f"Fire extinguished! Showing final state...")
-            print(60*"=")
-            print(60*"=")
-            for j in range(1):  # Show final state for 10 frames
-                env.render(drones)
-                plt.pause(5)
+            failure_mode = 0
+            time_to_obj = i
+            if render:
+                print(60*"=")
+                print(60*"=")
+                print(f"Fire extinguished! Showing final state...")
+                print(60*"=")
+                print(60*"=")
+                for j in range(1):  # Show final state for 10 frames
+                    env.render(drones)
+                    plt.pause(5)
             break
         
         # Dec-POMDP decision making and execution
@@ -95,22 +113,42 @@ def run_simulation():
             if packet:
                 packets.append(packet)
         
+        total_comms += len(packets)
+        
         # Exchange packets between drones
         for packet in packets:
             for drone in drones:
                 if drone.drone_id != packet['sender_id']:
                     drone.receive_telemetry(packet)
+        
+        # Check for stuck failure (Mode 3)
+        if any(d.stuck_count >= 10 for d in drones):
+            failure_mode = 3
+            time_to_obj = i
+            if render:
+                print(60*"=")
+                print("FAILURE: Drones got Stuck")
+                print(60*"=")
+            break
 
-    else:
+    if failure_mode == 2 and render:
         print(60*"=")
         print(60*"=")
         print("FAILURE: Exceeded max sim time")
         print(60*"=")
         print(60*"=")
 
+    # Calculate Total Cost (MAX_BUDGET - remaining budget)
+    # We use the minimum remaining budget to represent the highest cost incurred by any agent
+    final_min_budget = min(d.budget for d in drones)
+    total_cost = cfg.MAX_BUDGET - final_min_budget
+    
+    tracker.log_failure(trial_num, failure_mode, total_cost, time_to_obj, total_comms)
     env.close()
 
 
 if __name__ == '__main__':
-    for i in range(1, 10):
-        run_simulation()
+    tracker = FailTracker()
+    for i in range(1, 101):
+        print(f"Running Trial {i}...")
+        run_simulation(i, tracker, render=True)

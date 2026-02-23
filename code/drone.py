@@ -28,6 +28,7 @@ class Drone():
         self.fire_found = False
         self.drifted = False
         self.history = []
+        self.stuck_count = 0
 
         # POMDP Params
         self.gamma = 0.0
@@ -58,11 +59,14 @@ class Drone():
         self.last_action = action
         
         # Deduct costs from budget
+        step_cost = self.time_cost
         if action in [1, 2, 3, 4]: # Movement actions
             step_cost += self.movement_cost
         elif action == 5: # Communication action
             step_cost += self.comm_cost
-        self.budget -= self.time_cost
+        self.budget -= step_cost
+
+        prev_position = self.position.copy()
 
         x = self.x
         y = self.y
@@ -88,11 +92,17 @@ class Drone():
             self.drifted = True
             wind_dx = int(np.round(np.cos(self.env.wind_direction)))
             wind_dy = int(np.round(np.sin(self.env.wind_direction)))
-            print(f"Drone {self.drone_id} is drifting along {self.env.wind_direction*180/np.pi} degrees ({wind_dx},{wind_dy})\n")
+            #print(f"Drone {self.drone_id} is drifting along {self.env.wind_direction*180/np.pi} degrees ({wind_dx},{wind_dy})\n")
             x = max(0, min(self.env.grid_size - 1, x + wind_dx))
             y = max(0, min(self.env.grid_size - 1, y + wind_dy))
 
-        self.position = np.array([x, y])            
+        self.position = np.array([x, y])
+        
+        if np.array_equal(self.position, prev_position):
+            self.stuck_count += 1
+        else:
+            self.stuck_count = 0
+            
         self.visited_cells.add((x, y))
         if not self.env.fire_extinguished: self.fire_found = self.observe() # Observe for free after every action
         self.history.append(self.state)     
@@ -111,7 +121,7 @@ class Drone():
         self.belief_state.update_from_observation(self.position, self.window_size, fire_observed)        
         
         if fire_observed: 
-            print(f"Drone {self.drone_id} found fire at position {self.env.fire_pos}!")
+            #print(f"Drone {self.drone_id} found fire at position {self.env.fire_pos}!")
             
             if np.array_equal(self.position, self.env.fire_pos):
                 self.action(6) # Extinguish the fire
@@ -258,9 +268,9 @@ class Drone():
             val_nothing = gain_see_nothing + self.gamma * future_val
             q_value = reward_action + self.gamma*(prob_see_fire*gain_see_fire + prob_see_nothing*val_nothing)
             
-            print(f"Time step {self.time} | Action {action_idx} | Reward: {reward_action:.2f} | Q-Value: {q_value:.2f}")
-            print(f"\tP(o = Fire):    {prob_see_fire:.6f}\tU(b'| o = Fire):    {gain_see_fire:.4f}")
-            print(f"\tP(o = Nothing): {prob_see_nothing:.6f}\tU(b'| o = Nothing): {val_nothing:.4f} (Inc. Future: {future_val:.2f})")
+            #print(f"Time step {self.time} | Action {action_idx} | Reward: {reward_action:.2f} | Q-Value: {q_value:.2f}")
+            #print(f"\tP(o = Fire):    {prob_see_fire:.6f}\tU(b'| o = Fire):    {gain_see_fire:.4f}")
+            #print(f"\tP(o = Nothing): {prob_see_nothing:.6f}\tU(b'| o = Nothing): {val_nothing:.4f} (Inc. Future: {future_val:.2f})")
             
             if q_value > max_q_value:
                 max_q_value = q_value
@@ -281,10 +291,10 @@ class Drone():
         # Q(b, a = communicate) = R(b, a = communicate) + U(b' | a = communicate)
         q_comm = reward_comm + estimated_comm_gain 
         
-        print(f"(Q_comm: {q_comm:.2f} vs Q_move: {max_q_value:.2f})")
+        #print(f"(Q_comm: {q_comm:.2f} vs Q_move: {max_q_value:.2f})")
 
         if q_comm > max_q_value:
-            print(f"Drone {self.drone_id} decided to COMMUNICATE.")
+            #print(f"Drone {self.drone_id} decided to COMMUNICATE.")
             return 5
             
         return best_action
