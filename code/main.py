@@ -42,7 +42,7 @@ def initialize_drones(num_drones, env, window_size):
     return drones
 
 
-def run_simulation(trial_num, tracker, render=False):
+def run_simulation(trial_num, tracker, render=False, save_gif=False):
     """
     Run the complete Dec-POMDP multi-agent simulation
     """
@@ -60,6 +60,8 @@ def run_simulation(trial_num, tracker, render=False):
     env.grid_size = cfg.GRID_SIZE
     env.wind_speed = cfg.WIND_SPEED
     env.wind_direction = cfg.WIND_DIRECTION
+    if save_gif:
+        env.record_frames = True
 
     # Initialize the drone(s)
     drone_window_size = cfg.OBSERVATION_WINDOW_SIZE
@@ -78,9 +80,10 @@ def run_simulation(trial_num, tracker, render=False):
                 print(f"*** Wind changed direction to {env.wind_direction*180/np.pi:.1f} degrees ***")
 
         # Render current state
-        if render:
+        if render or save_gif:
             env.render(drones)
-            plt.pause(render_pause)
+            if render:
+                plt.pause(render_pause)
         
         # Check for budget failure (Mode 1)
         # If any drone runs out of budget, we consider it a failure for the team/mission
@@ -143,12 +146,16 @@ def run_simulation(trial_num, tracker, render=False):
     final_min_budget = min(d.budget for d in drones)
     total_cost = cfg.MAX_BUDGET - final_min_budget
     
+    if save_gif:
+        gif_fps = int(2.0 / cfg.RENDER_PAUSE) if cfg.RENDER_PAUSE > 0 else 10
+        env.save_gif(f"simulation_trial_{trial_num}.gif", fps=gif_fps)
+
     tracker.log_failure(trial_num, failure_mode, total_cost, time_to_obj, total_comms)
     env.close()
 
 
 if __name__ == '__main__':
     tracker = FailTracker()
-    for i in range(1, 101):
+    for i in range(1, 2):
         print(f"Running Trial {i}...")
-        run_simulation(i, tracker, render=True)
+        run_simulation(i, tracker, render=True, save_gif=True)

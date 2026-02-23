@@ -7,6 +7,7 @@ import matplotlib.pyplot as plt
 from matplotlib import colors
 import matplotlib.patches as patches
 from gymnasium import Env
+import imageio
 
 class SearchEnv(Env):
     """Multi-agent search environment with Dec-POMDP framework"""
@@ -21,6 +22,8 @@ class SearchEnv(Env):
         self.patches = []
         self.fig, self.ax = None, None
         self.status_texts = []
+        self.frames = []
+        self.record_frames = False
 
     def render(self, drones):
         grid = np.zeros((self.grid_size, self.grid_size))
@@ -119,8 +122,28 @@ class SearchEnv(Env):
         
         self.fig.canvas.draw()
         self.fig.canvas.flush_events()
+
+        if self.record_frames:
+            # Use buffer_rgba() as tostring_rgb() is deprecated/removed in newer Matplotlib
+            image = np.frombuffer(self.fig.canvas.buffer_rgba(), dtype='uint8')
+            
+            # Handle HiDPI scaling by calculating actual buffer dimensions
+            w, h = self.fig.canvas.get_width_height()
+            if len(image) != w * h * 4:
+                scale = (len(image) / (w * h * 4)) ** 0.5
+                w = int(w * scale)
+                h = int(h * scale)
+            
+            image = image.reshape((h, w, 4))
+            image = image[:, :, :3].copy() # Convert RGBA to RGB
+            self.frames.append(image)
         
         return self.fig
+
+    def save_gif(self, filename, fps=5):
+        if self.frames:
+            imageio.mimsave(filename, self.frames, fps=fps)
+            print(f"Animation saved to {filename}")
 
     def close(self):
         if self.fig:
