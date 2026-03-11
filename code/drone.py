@@ -22,7 +22,6 @@ class Drone():
         
         self.time = 0
         self.visited_cells = set() # Track the global visited cells
-        self.visited_cells.add((self.x, self.y))
         self.steps_since_last_comm = 0
         self.last_action = None
         self.fire_found = False
@@ -103,7 +102,6 @@ class Drone():
         else:
             self.stuck_count = 0
             
-        self.visited_cells.add((x, y))
         if not self.env.fire_extinguished: self.fire_found = self.observe() # Observe for free after every action
         self.history.append(self.state)     
         self.time += 1
@@ -119,6 +117,14 @@ class Drone():
         fire_observed = x_check and y_check
         
         self.belief_state.update_from_observation(self.position, self.window_size, fire_observed)        
+        
+        # Update visited_cells to include all observed cells
+        half = self.window_size // 2
+        x_min, x_max = max(0, self.x - half), min(self.env.grid_size, self.x + half + 1)
+        y_min, y_max = max(0, self.y - half), min(self.env.grid_size, self.y + half + 1)
+        for r in range(x_min, x_max):
+            for c in range(y_min, y_max):
+                self.visited_cells.add((r, c))
         
         if fire_observed: 
             #print(f"Drone {self.drone_id} found fire at position {self.env.fire_pos}!")
@@ -159,6 +165,7 @@ class Drone():
         if 'belief_state' in packet:
             self.belief_state.merge(packet['belief_state'])
 
+
     def _get_best_value(self, belief, position, visited, depth):
         """
         Recursive helper to calculate the best Q-value from a given state with limited lookahead.
@@ -198,7 +205,9 @@ class Drone():
             future_val = 0.0
             if depth > 1 and prob_see_nothing > 0:
                 new_visited = visited.copy()
-                new_visited.add((nx, ny))
+                for r in range(x_min, x_max):
+                    for c in range(y_min, y_max):
+                        new_visited.add((r, c))
                 future_val = self._get_best_value(temp_belief, (nx, ny), new_visited, depth - 1)
             
             # Q(b, a)
@@ -212,12 +221,12 @@ class Drone():
 
     def decide_action_pomdp(self):
         """
-        Lookahead POMDP Planning (Depth=2).
+        Lookahead POMDP Planning (Depth=4).
         Returns the action index (1-5) with the highest Q-value.
         """
-        best_action = 0 
+        best_actions = [0] 
         max_q_value = -float('inf')
-        lookahead_depth = 2
+        lookahead_depth = 4
         
         current_entropy = self.belief_state.get_entropy()
         
@@ -230,11 +239,7 @@ class Drone():
             ny = max(0, min(self.env.grid_size - 1, self.y + dy))
             
             # --- R(b, a) ---
-            bonus = 0.0
-            if (nx, ny) not in self.visited_cells:
-                bonus = self.exploration_bonus # Reward visiting new cells
-            else: 
-                bonus = -self.exploration_bonus # Penalize revisiting cells
+            bonus = self.exploration_bonus if (nx, ny) not in self.visited_cells else 0
 
             reward_action = bonus - self.movement_cost - self.time_cost
             
@@ -261,7 +266,9 @@ class Drone():
             future_val = 0.0
             if lookahead_depth > 1 and prob_see_nothing > 0:
                 new_visited = self.visited_cells.copy()
-                new_visited.add((nx, ny))
+                for r in range(x_min, x_max):
+                    for c in range(y_min, y_max):
+                        new_visited.add((r, c))
                 future_val = self._get_best_value(temp_belief, (nx, ny), new_visited, lookahead_depth - 1)
 
             # Q(b, a) = R(b, a) + \gamma*\sum(P(o|b, a)*U(b))
@@ -274,27 +281,33 @@ class Drone():
             
             if q_value > max_q_value:
                 max_q_value = q_value
-                best_action = action_idx
+                best_actions = [action_idx]
+            elif np.isclose(q_value, max_q_value):
+                best_actions.append(action_idx)
 
-        # --- Check the Q-value for performing communication ---
-        # Heuristic: Communicate if we have gathered significant information (Low Entropy relative to prior)
-    
+        best_action = int(np.random.choice(best_actions))
+# --- Check the Q-value for performing communication ---
+        
         # R(b, a = communicate)
         reward_comm = -self.comm_cost - self.time_cost
 
-        # U(b' | a = communicate) - Value of sharing our knowledge
-        # We use (Max Entropy - Current Entropy) as a proxy for "Information Possessed"
+        # U(b' | a = communicate)
         max_entropy = np.log(self.env.grid_size * self.env.grid_size)
         information_possessed = max(0.0, max_entropy - current_entropy)
-        estimated_comm_gain = information_possessed * (1.0 + 0.4 * self.steps_since_last_comm)
-
-        # Q(b, a = communicate) = R(b, a = communicate) + U(b' | a = communicate)
-        q_comm = reward_comm + estimated_comm_gain 
         
-        #print(f"(Q_comm: {q_comm:.2f} vs Q_move: {max_q_value:.2f})")
+        # Staleness factor forces gain to 0 immediately after communicating, 
+        # and asymptotically approaches 1.0 as time passes.
+        decay_rate = 0.8
+        staleness_factor = 1.0 - (decay_rate ** self.steps_since_last_comm)
+        
+        estimated_comm_gain = information_possessed * staleness_factor
 
-        if q_comm > max_q_value:
-            #print(f"Drone {self.drone_id} decided to COMMUNICATE.")
+        # Q(b, a = communicate)
+        # Add future value (approximated by max_q_value since state doesn't change)
+        q_comm = reward_comm + estimated_comm_gain + self.gamma * max_q_value
+
+        # Only communicate if it's better than moving AND provides tangible information gain
+        if q_comm > max_q_value and estimated_comm_gain > 0.5:
             return 5
             
         return best_action

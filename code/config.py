@@ -9,7 +9,7 @@ INITIAL_TIME = 0.0
 TIME_STEP = 0.05
 MAX_SIMULATION_TIME = 15.0
 MAX_BUDGET = 1280
-RENDER_PAUSE = 0.2
+RENDER_PAUSE = 0.05
 
 #  ===== Environment parameters ===== 
 GRID_SIZE = 50  # Size of the NxN grid
@@ -22,7 +22,7 @@ OBSERVATION_WINDOW_SIZE = 3
 
 # ===== Dec-POMDP parameters ===== 
 GAMMA = 0.95
-EXPLORATION_BONUS = 10.0  # Bonus reward for exploring new cells, promotes active exploration of new cells
+EXPLORATION_BONUS = 50.0  # Bonus reward for exploring new cells, promotes active exploration of new cells
 
 # === Cost parameters ===
 COMMUNICATION_COST = 5.0

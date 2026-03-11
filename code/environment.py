@@ -30,13 +30,8 @@ class SearchEnv(Env):
         
         # Mark explored cells (visited or observed)
         for drone in drones:
-            half = drone.window_size // 2
             for (r, c) in drone.visited_cells:
-                r_min = max(0, r - half)
-                r_max = min(self.grid_size, r + half + 1)
-                c_min = max(0, c - half)
-                c_max = min(self.grid_size, c + half + 1)
-                grid[r_min:r_max, c_min:c_max] = 1
+                grid[r, c] = 1
 
         if not self.fire_extinguished:
             grid[tuple(self.fire_pos)] = 2
@@ -73,7 +68,7 @@ class SearchEnv(Env):
         self.status_texts = []
 
         # Display Drone Info (Entropy & Action)
-        action_map = {0: 'Stay', 1: 'Up', 2: 'Down', 3: 'Left', 4: 'Right', 5: 'COMMUNICATE', 6: 'Extinguish'}
+        action_map = {0: 'Stay', 1: 'Right', 2: 'Left', 3: 'Up', 4: 'Down', 5: 'COMMUNICATE', 6: 'Extinguish'}
         
         for i, drone in enumerate(drones):
             entropy = drone.belief_state.get_entropy()

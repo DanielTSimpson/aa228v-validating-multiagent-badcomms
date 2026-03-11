@@ -1,2 +1,4 @@
 Trial #,Failure Mode,Total Cost,Time to Objective,Num Comms
-1,No Failure,1167.00,287,4
+1,No Failure,311.00,75,0
+2,No Failure,0.00,0,0
+3,No Failure,1151.00,285,0

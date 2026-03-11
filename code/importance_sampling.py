@@ -1,5 +1,5 @@
 """
-Main simulation script for Dec-POMDP multi-agent fire search
+Importance Sampling simulation script for Dec-POMDP multi-agent fire search
 Run this file to start the simulation
 """
 import numpy as np
@@ -7,6 +7,7 @@ import matplotlib.pyplot as plt
 from drone import Drone
 from environment import SearchEnv
 from failtracker import FailTracker
+from belief import Belief
 import config as cfg
 
 def initialize_drones(num_drones, env, window_size):
@@ -42,21 +43,28 @@ def initialize_drones(num_drones, env, window_size):
     return drones
 
 
-def run_simulation(trial_num, tracker, render=False, save_gif=False):
+def run_simulation(tracker, x:list = [], trial_num = 0, render=False, save_gif=False):
     """
     Run the complete Dec-POMDP multi-agent simulation
+    Args:
+        tracker: FailTracker object for getting and recording failure modes
+        x: List of disturbances  
+        render: Boolean to show the gridworld plot render
+        save_gif: Boolean to save the set of plots as a .gif
+        
+    Returns:
+        None
     """
     # Initialize simulation parameters
     t_0 = cfg.INITIAL_TIME
     dt = cfg.TIME_STEP
     t_f = cfg.MAX_SIMULATION_TIME
     render_pause = cfg.RENDER_PAUSE if render else 0.0
-
     N = int((t_f - t_0) / dt)
-    #print(f"Max {N} time steps (Dec-POMDP with Value Iteration)")
 
     # Initialize environment
     env = SearchEnv()
+    env.fire_pos = (1, 1) # Place the fire at one corner as a fixed extreme point
     env.grid_size = cfg.GRID_SIZE
     env.wind_speed = cfg.WIND_SPEED
     env.wind_direction = cfg.WIND_DIRECTION
@@ -71,11 +79,51 @@ def run_simulation(trial_num, tracker, render=False, save_gif=False):
     time_to_obj = N
     total_comms = 0
 
+
+    # === Inject disturbances, x into Drone A ===
+    theta_A = np.random.uniform(0, np.pi / 2) # Choose a random initial angle from Uniform(0, 90deg)
+    distance_A = np.random.normal(x[0], x[1]) # Choose a random initial distance from Normal(x[0], x[1])
+    
+    # Map polar coordinates to discrete grid relative to fire
+    fire_x, fire_y = env.fire_pos
+    new_x = int(np.round(fire_x + distance_A * np.cos(theta_A)))
+    new_y = int(np.round(fire_y + distance_A * np.sin(theta_A)))
+    new_x = max(0, min(env.grid_size - 1, new_x))
+    new_y = max(0, min(env.grid_size - 1, new_y))
+    drones[0].position = np.array([new_x, new_y])
+    drones[0].visited_cells = {(new_x, new_y)}
+    drones[0].belief_state = Belief(env.grid_size)
+    drones[0].fire_found = drones[0].observe()
+    drones[0].history = [drones[0].state]
+
+
+    # === Inject disturbances, x into Drone B ===
+    theta_B = np.random.uniform(0, np.pi / 2) # Choose a random initial angle from Uniform(0, 90deg)
+    distance_B = np.random.normal(x[0], x[1]) # Choose a random initial distance from Normal(x[0], x[1])
+    
+    # Map polar coordinates to discrete grid relative to fire
+    fire_x, fire_y = env.fire_pos
+    new_x = int(np.round(fire_x + distance_B * np.cos(theta_B)))
+    new_y = int(np.round(fire_y + distance_B * np.sin(theta_B)))
+    new_x = max(0, min(env.grid_size - 1, new_x))
+    new_y = max(0, min(env.grid_size - 1, new_y))
+    drones[1].position = np.array([new_x, new_y])
+    drones[1].visited_cells = {(new_x, new_y)}
+    drones[1].belief_state = Belief(env.grid_size)
+    drones[1].fire_found = drones[1].observe()
+    drones[1].history = [drones[1].state]
+
+    # === Inject disturbances, x into Environment's Wind ===
+    env.wind_speed = np.random.normal(x[2], x[3]) # Choose a random initial wind speed from Normal(x[0], x[1])
+    env.wind_direction = (theta_A + theta_B)/2
+
     # Main simulation loop
     for i in range(N):
-        # Dynamic wind: 25% chance to change every 10 timesteps
-        if i > 0 and i % 10 == 0 and np.random.random() < 0.25:
-            env.wind_direction = 2 * np.pi * np.random.random()
+        # Bias the Dynamic Wind every 10 time steps to push the drones away from the fire
+        if i > 0 and i % 10 == 0:
+            theta_A = np.arctan2(drones[0].position[1] - env.fire_pos[1], drones[0].position[0] - env.fire_pos[0])
+            theta_B = np.arctan2(drones[1].position[1] - env.fire_pos[1], drones[1].position[0] - env.fire_pos[0])
+            env.wind_direction = (theta_A + theta_B) * 0.5
             if render:
                 print(f"*** Wind changed direction to {env.wind_direction*180/np.pi:.1f} degrees ***")
 
@@ -156,6 +204,9 @@ def run_simulation(trial_num, tracker, render=False, save_gif=False):
 
 if __name__ == '__main__':
     tracker = FailTracker()
-    for i in range(1, 2):
-        print(f"Running Trial {i}...")
-        run_simulation(i, tracker, render=True, save_gif=True)
+    mu_dist = (int) (cfg.GRID_SIZE * 0.80)  # Average drone spawn distance away from the fire
+    var_dist = 1                            # Variance of drone spawn distance away from the fire
+    mu_wind = 0.25                          # Average wind magnitude
+    var_wind = 0.0625                       # Variance of wind magnitude 
+    x = [mu_dist, np.pow(var_dist, 2), mu_wind, np.pow(var_wind,2)] # Set of fuzzed variables
+    run_simulation(tracker, x, render=True, save_gif=False)
