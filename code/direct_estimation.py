@@ -156,4 +156,4 @@ if __name__ == '__main__':
     tracker = FailTracker()
     for i in range(1, 5):
         print(f"Running Trial {i}...")
-        run_simulation(i, tracker, render=True, save_gif=False)
+        run_simulation(i, tracker, render=False, save_gif=False)

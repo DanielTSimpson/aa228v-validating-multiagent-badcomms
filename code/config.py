@@ -8,12 +8,12 @@ Centralized place for all simulation parameters
 INITIAL_TIME = 0.0
 TIME_STEP = 0.05
 MAX_SIMULATION_TIME = 15.0
-MAX_BUDGET = 1280
+MAX_BUDGET = 2000
 RENDER_PAUSE = 0.05
 
 #  ===== Environment parameters ===== 
 GRID_SIZE = 50  # Size of the NxN grid
-WIND_SPEED = 0.25 # Probability of agents drifting after an action
+WIND_SPEED = 0.05 # Probability of agents drifting after an action
 WIND_DIRECTION = 2*np.pi*np.random.random() # Direction of the wind in radians (CCW)
 
 # ===== Drone parameters ===== 
