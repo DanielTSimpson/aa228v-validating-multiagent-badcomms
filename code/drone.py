@@ -152,7 +152,7 @@ class Drone():
             'sender_id': self.drone_id,
             'timestamp': self.time,
             'position': self.position.copy(),
-            'belief_state': deepcopy(self.belief_state),
+            'belief_state': self.belief_state.copy(),
             'visited_cells': self.visited_cells.copy(),
             'history': deepcopy(self.history)
         }
@@ -198,7 +198,7 @@ class Drone():
             gain_see_fire = current_entropy
             
             # U(b'| o = Nothing)
-            temp_belief = deepcopy(belief)
+            temp_belief = belief.copy()
             temp_belief.update_from_observation((nx, ny), self.window_size, fire_found=False)
             gain_see_nothing = current_entropy - temp_belief.get_entropy()
             
@@ -258,7 +258,7 @@ class Drone():
             gain_see_fire = current_entropy
 
             # U(b'| o = Nothing)
-            temp_belief = deepcopy(self.belief_state)
+            temp_belief = self.belief_state.copy()
             temp_belief.update_from_observation((nx, ny), self.window_size, fire_found=False)
             gain_see_nothing = current_entropy - temp_belief.get_entropy()
             

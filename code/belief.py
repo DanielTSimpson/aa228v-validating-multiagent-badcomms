@@ -16,11 +16,19 @@ class Belief:
         # Uniform prior: 1 / total_cells
         self.belief_grid = np.ones((grid_size, grid_size)) / (grid_size * grid_size)
 
+    def copy(self):
+        """
+        Create a lightweight copy of the Belief object.
+        """
+        new_obj = Belief(self.grid_size)
+        new_obj.belief_grid = self.belief_grid.copy()
+        return new_obj
+
     def get_entropy(self):
         """
         Calculate the Shannon entropy of the current belief distribution.
         """
-        p = self.belief_grid.flatten()
+        p = self.belief_grid.ravel()
         p = p[p > 0]
         return -np.sum(p * np.log(p))
     

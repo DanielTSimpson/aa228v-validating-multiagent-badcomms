@@ -10,6 +10,7 @@ from failtracker import FailTracker
 from belief import Belief
 from concurrent.futures import ProcessPoolExecutor
 import config as cfg
+import csv
 
 def initialize_drones(num_drones, env, window_size):
     """Initialize drones at random positions that don't see the fire initially
@@ -212,6 +213,12 @@ if __name__ == '__main__':
         print(f"Optimizing for {mode_name}")
         print(f"{'='*40}")
 
+        # Initialize CSV file for this failure mode
+        csv_filename = f"AIS_params_{mode_name.replace(' ', '_')}.csv"
+        with open(csv_filename, mode='w', newline='') as file:
+            writer = csv.writer(file)
+            writer.writerow(['Iteration', 'mu_dist', 'var_dist', 'mu_wind', 'var_wind', 'w_bar', 'w_angle', 'var_wind_dir_change'])
+
         # Initial parameters (means of the proposal distributions)
         # Order: [mu_dist, var_dist, mu_wind, var_wind, w_bar, w_angle, var_wind_dir_change]
         mu = np.array([
@@ -249,11 +256,7 @@ if __name__ == '__main__':
                 x_candidate[5] = np.clip(x_candidate[5], 0.0, 1.0)
                 x_candidate[6] = max(0.01, x_candidate[6])
 
-                # Returns [total_cost, total_time, stuck_count]
-                metrics = run_simulation(tracker, x_candidate.tolist(), trial_num=trial_counter, render=0, save_data=save_data)
-                
                 population.append(x_candidate)
-                scores.append(metrics[mode_idx])
                 # Submit simulation to process pool. Pass None for tracker since save_data=False
                 futures.append(executor.submit(run_simulation, None, x_candidate.tolist(), trial_counter, 0, False, False))
 
@@ -271,6 +274,11 @@ if __name__ == '__main__':
             alpha = 0.7
             mu = alpha * np.mean(elites, axis=0) + (1 - alpha) * mu
             sigma = alpha * np.std(elites, axis=0) + (1 - alpha) * sigma
+            
+            # Save updated parameters to CSV
+            with open(csv_filename, mode='a', newline='') as file:
+                writer = csv.writer(file)
+                writer.writerow([i + 1] + mu.tolist())
             
             print(f"Iter {i+1}: Max Score={np.max(scores):.2f}, Mean Score={np.mean(scores):.2f}")
         
