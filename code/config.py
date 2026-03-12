@@ -7,8 +7,8 @@ Centralized place for all simulation parameters
 # ===== Simulation (main) parameters ===== 
 INITIAL_TIME = 0.0
 TIME_STEP = 0.05
-MAX_SIMULATION_TIME = 15.0
-MAX_BUDGET = 2000
+MAX_SIMULATION_TIME = 50.0
+MAX_BUDGET = 5000
 RENDER_PAUSE = 0.05
 
 #  ===== Environment parameters ===== 
@@ -19,12 +19,13 @@ WIND_DIRECTION = 2*np.pi*np.random.random() # Direction of the wind in radians (
 # ===== Drone parameters ===== 
 NUM_DRONES = 2
 OBSERVATION_WINDOW_SIZE = 3
+LOOKAHEAD_DEPTH = 3
 
 # ===== Dec-POMDP parameters ===== 
 GAMMA = 0.95
 EXPLORATION_BONUS = 50.0  # Bonus reward for exploring new cells, promotes active exploration of new cells
 
 # === Cost parameters ===
-COMMUNICATION_COST = 5.0
+COMMUNICATION_COST = 3.0
 MOVEMENT_COST = 1.0
 TIME_COST = 3.0

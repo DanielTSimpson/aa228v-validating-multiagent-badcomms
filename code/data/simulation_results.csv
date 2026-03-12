@@ -1,5 +1,161 @@
 Trial #,Failure Mode,Total Cost,Time to Objective,Num Comms
-1,No Failure,463.00,113,0
-2,Out of Time,1200.00,300,0
-3,Out of Time,1200.00,300,0
-4,Out of Time,1200.00,300,0
+1,No Failure,271.00,66,0
+2,No Failure,1215.00,301,0
+3,No Failure,2419.00,576,108
+4,No Failure,219.00,52,0
+5,No Failure,4269.00,943,487
+6,No Failure,1579.00,393,0
+7,No Failure,2265.00,541,95
+8,Out of Time,4448.00,1000,446
+9,No Failure,927.00,227,0
+10,No Failure,655.00,161,0
+11,Drones got Stuck,4228.00,941,458
+12,No Failure,303.00,74,0
+13,No Failure,855.00,209,0
+14,Out of Time,4374.00,1000,374
+15,No Failure,351.00,86,0
+16,No Failure,143.00,33,0
+17,Out of Time,4220.00,1000,219
+18,No Failure,91.00,21,0
+19,No Failure,2537.00,600,128
+20,No Failure,3119.00,711,264
+21,No Failure,407.00,100,0
+22,No Failure,535.00,131,0
+23,Out of Time,4428.00,1000,427
+24,Out of Time,4560.00,1000,560
+25,No Failure,455.00,111,0
+26,No Failure,1581.00,393,2
+27,No Failure,311.00,75,0
+28,No Failure,4297.00,993,316
+29,No Failure,767.00,190,0
+30,No Failure,943.00,233,0
+31,Out of Time,4514.00,1000,513
+32,No Failure,351.00,85,0
+33,No Failure,187.00,45,0
+34,No Failure,1503.00,373,0
+35,No Failure,179.00,42,0
+36,No Failure,407.00,99,0
+37,No Failure,463.00,114,0
+38,No Failure,39.00,8,0
+39,No Failure,331.00,80,0
+40,No Failure,2193.00,521,98
+41,Out of Time,4350.00,1000,349
+42,No Failure,2381.00,561,129
+43,No Failure,1483.00,369,0
+44,Out of Time,4564.00,1000,563
+45,No Failure,2980.00,695,196
+46,No Failure,1011.00,250,0
+47,No Failure,111.00,25,0
+48,No Failure,607.00,151,0
+49,No Failure,1543.00,383,0
+50,No Failure,1873.00,460,22
+51,No Failure,383.00,93,0
+52,No Failure,931.00,230,0
+53,No Failure,203.00,48,0
+54,No Failure,1649.00,405,18
+55,Out of Time,4544.00,1000,542
+56,No Failure,2169.00,519,87
+57,No Failure,311.00,75,0
+58,No Failure,251.00,60,0
+59,No Failure,127.00,29,0
+60,No Failure,15.00,1,0
+61,No Failure,479.00,118,0
+62,No Failure,243.00,58,0
+63,Out of Time,4558.00,1000,557
+64,No Failure,419.00,102,0
+65,No Failure,1721.00,424,14
+66,No Failure,139.00,32,0
+67,No Failure,287.00,70,0
+68,No Failure,223.00,53,0
+69,No Failure,1861.00,453,42
+70,No Failure,315.00,76,0
+71,No Failure,1339.00,332,0
+72,No Failure,2319.00,560,68
+73,No Failure,839.00,207,0
+74,No Failure,75.00,17,0
+75,No Failure,1547.00,384,0
+76,No Failure,2217.00,528,97
+77,Out of Time,4304.00,1000,303
+78,Out of Time,4542.00,1000,538
+79,No Failure,1815.00,446,24
+80,No Failure,15.00,1,0
+81,Out of Time,4578.00,1000,575
+82,No Failure,71.00,15,0
+83,No Failure,1151.00,286,0
+84,No Failure,1415.00,352,0
+85,No Failure,67.00,15,0
+86,No Failure,323.00,79,0
+87,No Failure,315.00,76,0
+88,No Failure,1283.00,319,0
+89,No Failure,611.00,150,0
+90,No Failure,35.00,7,0
+91,No Failure,1347.00,335,0
+92,No Failure,619.00,152,0
+93,No Failure,651.00,160,0
+94,No Failure,1143.00,284,0
+95,No Failure,303.00,73,0
+96,No Failure,3353.00,774,251
+97,No Failure,151.00,35,0
+98,No Failure,643.00,158,0
+99,No Failure,435.00,107,0
+100,No Failure,595.00,147,0
+101,No Failure,255.00,62,0
+102,No Failure,771.00,190,0
+103,No Failure,123.00,29,0
+104,No Failure,1709.00,421,14
+105,Out of Time,4394.00,1000,394
+106,No Failure,31.00,6,0
+107,No Failure,1107.00,275,0
+108,No Failure,727.00,179,0
+109,No Failure,3937.00,887,380
+110,Out of Time,4506.00,1000,504
+111,Out of Time,4566.00,1000,562
+112,No Failure,603.00,148,0
+113,No Failure,347.00,85,0
+114,No Failure,2483.00,582,140
+115,No Failure,1275.00,317,0
+116,No Failure,127.00,28,0
+117,No Failure,1299.00,322,0
+118,No Failure,1139.00,283,0
+119,No Failure,3090.00,704,270
+120,No Failure,359.00,89,0
+121,No Failure,3485.00,800,274
+122,Out of Time,4410.00,1000,410
+123,No Failure,1599.00,397,0
+124,No Failure,331.00,80,0
+125,No Failure,1675.00,415,0
+126,No Failure,87.00,19,0
+127,No Failure,691.00,170,0
+128,No Failure,3437.00,790,273
+129,No Failure,27.00,5,0
+130,No Failure,2405.00,571,115
+131,No Failure,283.00,68,0
+132,No Failure,2001.00,486,47
+133,Out of Time,4540.00,1000,540
+134,No Failure,151.00,35,0
+135,No Failure,719.00,177,0
+136,No Failure,359.00,87,0
+137,No Failure,319.00,77,0
+138,No Failure,291.00,70,0
+139,Drones got Stuck,4544.00,993,567
+140,No Failure,2001.00,482,62
+141,Out of Time,4554.00,1000,553
+142,No Failure,1203.00,298,0
+143,No Failure,2065.00,496,71
+144,No Failure,1809.00,443,29
+145,No Failure,819.00,202,0
+146,Out of Time,4388.00,1000,385
+147,No Failure,147.00,33,0
+148,No Failure,1183.00,294,0
+149,No Failure,1123.00,278,0
+150,No Failure,967.00,239,0
+151,No Failure,1383.00,343,0
+152,No Failure,1007.00,249,0
+153,No Failure,1175.00,291,0
+154,No Failure,763.00,188,0
+155,No Failure,863.00,214,0
+156,No Failure,187.00,44,0
+157,No Failure,1019.00,252,0
+158,No Failure,1911.00,464,48
+159,No Failure,503.00,124,0
+160,No Failure,307.00,74,0

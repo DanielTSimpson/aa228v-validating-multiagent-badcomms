@@ -154,6 +154,6 @@ def run_simulation(trial_num, tracker, render=False, save_gif=False):
 
 if __name__ == '__main__':
     tracker = FailTracker()
-    for i in range(1, 5):
+    for i in range(1, 1000):
         print(f"Running Trial {i}...")
         run_simulation(i, tracker, render=False, save_gif=False)

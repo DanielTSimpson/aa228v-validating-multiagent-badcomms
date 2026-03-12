@@ -19,6 +19,7 @@ class Drone():
         self.position = np.random.randint(0, self.env.grid_size, size=2)
         self.budget = cfg.MAX_BUDGET
         self.belief_state = Belief(self.env.grid_size)
+        self.lookahead_depth = cfg.LOOKAHEAD_DEPTH
         
         self.time = 0
         self.visited_cells = set() # Track the global visited cells
@@ -226,7 +227,6 @@ class Drone():
         """
         best_actions = [0] 
         max_q_value = -float('inf')
-        lookahead_depth = 4
         
         current_entropy = self.belief_state.get_entropy()
         
@@ -264,12 +264,12 @@ class Drone():
             
             # --- Future Value (Lookahead) ---
             future_val = 0.0
-            if lookahead_depth > 1 and prob_see_nothing > 0:
+            if self.lookahead_depth > 1 and prob_see_nothing > 0:
                 new_visited = self.visited_cells.copy()
                 for r in range(x_min, x_max):
                     for c in range(y_min, y_max):
                         new_visited.add((r, c))
-                future_val = self._get_best_value(temp_belief, (nx, ny), new_visited, lookahead_depth - 1)
+                future_val = self._get_best_value(temp_belief, (nx, ny), new_visited, self.lookahead_depth - 1)
 
             # Q(b, a) = R(b, a) + \gamma*\sum(P(o|b, a)*U(b))
             val_nothing = gain_see_nothing + self.gamma * future_val
@@ -293,7 +293,7 @@ class Drone():
 
         # U(b' | a = communicate)
         max_entropy = np.log(self.env.grid_size * self.env.grid_size)
-        information_possessed = max(0.0, max_entropy - current_entropy)
+        information_possessed = max(0.0, 2*(max_entropy - current_entropy))
         
         # Staleness factor forces gain to 0 immediately after communicating, 
         # and asymptotically approaches 1.0 as time passes.
