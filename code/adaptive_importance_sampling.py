@@ -85,13 +85,14 @@ def run_simulation(tracker, x:list = [], trial_num = 0, render=0, save_gif=False
 
 
     # === Inject disturbances, x into Drone A ===
+    droneA_old_pos = drones[0].position
     theta_A = np.random.uniform(0, np.pi / 2) # Choose a random initial angle from Uniform(0, 90deg)
-    distance_A = np.random.normal(x[0], x[1]) # Choose a random initial distance from Normal(x[0], x[1])
+    distance_A = np.random.normal(int(cfg.GRID_SIZE * x[1]), int(cfg.GRID_SIZE * x[2]**2)) # Choose a random initial distance from Normal(x[0], x[1])
     
     # Map polar coordinates to discrete grid relative to fire
     fire_x, fire_y = env.fire_pos
-    new_x = int(np.round(fire_x + distance_A * np.cos(theta_A)))
-    new_y = int(np.round(fire_y + distance_A * np.sin(theta_A)))
+    new_x = int(x[0]*droneA_old_pos[0] + (1-x[0])*np.round(fire_x + distance_A * np.cos(theta_A))) # Bias the drone to the random position or radial position
+    new_y = int(x[0]*droneA_old_pos[1] + (1-x[0])*np.round(fire_y + distance_A * np.sin(theta_A)))
     new_x = max(0, min(env.grid_size - 1, new_x))
     new_y = max(0, min(env.grid_size - 1, new_y))
     drones[0].position = np.array([new_x, new_y])
@@ -102,13 +103,14 @@ def run_simulation(tracker, x:list = [], trial_num = 0, render=0, save_gif=False
 
 
     # === Inject disturbances, x into Drone B ===
+    droneB_old_pos = drones[1].position
     theta_B = np.random.uniform(0, np.pi / 2) # Choose a random initial angle from Uniform(0, 90deg)
-    distance_B = np.random.normal(x[0], x[1]) # Choose a random initial distance from Normal(x[0], x[1])
+    distance_B = np.random.normal(int(cfg.GRID_SIZE * x[1]), int(cfg.GRID_SIZE * x[2]**2)) # Choose a random initial distance from Normal(x[0], x[1])
     
     # Map polar coordinates to discrete grid relative to fire
     fire_x, fire_y = env.fire_pos
-    new_x = int(np.round(fire_x + distance_B * np.cos(theta_B)))
-    new_y = int(np.round(fire_y + distance_B * np.sin(theta_B)))
+    new_x = int(x[0]*droneB_old_pos[0] + (1-x[0])*np.round(fire_x + distance_B * np.cos(theta_B))) # Bias the drone to the random position or radial position
+    new_y = int(x[0]*droneB_old_pos[1] + (1-x[0])*np.round(fire_y + distance_B * np.sin(theta_B)))
     new_x = max(0, min(env.grid_size - 1, new_x))
     new_y = max(0, min(env.grid_size - 1, new_y))
     drones[1].position = np.array([new_x, new_y])
@@ -118,8 +120,8 @@ def run_simulation(tracker, x:list = [], trial_num = 0, render=0, save_gif=False
     drones[1].history = [drones[1].state]
 
     # === Inject disturbances, x into Environment's Wind ===
-    env.wind_speed = np.random.normal(x[2], x[3]) # Choose a random initial wind speed from Normal(x[0], x[1])
-    env.wind_direction = (1 - x[4])*np.random.normal((x[5]*theta_A + (1-x[5])*theta_B)/2, x[6]) + x[4]*2*np.pi*np.random.random()
+    env.wind_speed = np.random.normal(x[3], x[4]**2) # Choose a random initial wind speed from Normal(x[3], x[4])
+    env.wind_direction = x[5]*np.random.normal((theta_A + theta_B)/2, x[6]**2) + (1-x[5])*2*np.pi*np.random.random()
 
     # Main simulation loop
     for i in range(N):
@@ -127,7 +129,7 @@ def run_simulation(tracker, x:list = [], trial_num = 0, render=0, save_gif=False
         if i > 0 and i % 10 == 0:
             theta_A = np.arctan2(drones[0].position[1] - env.fire_pos[1], drones[0].position[0] - env.fire_pos[0])
             theta_B = np.arctan2(drones[1].position[1] - env.fire_pos[1], drones[1].position[0] - env.fire_pos[0])
-            env.wind_direction = (1 - x[4])*np.random.normal((x[5]*theta_A + (1-x[5])*theta_B)/2, x[6]) + x[4]*2*np.pi*np.random.random()
+            env.wind_direction = x[5]*np.random.normal((theta_A + theta_B)/2, x[6]**2) + (1-x[5])*2*np.pi*np.random.random()
             if render == 1:
                 print(f"\tWind changed direction to {env.wind_direction*180/np.pi:.1f} degrees")
 
@@ -196,6 +198,7 @@ def run_simulation(tracker, x:list = [], trial_num = 0, render=0, save_gif=False
 
     if save_data:
         tracker.log_failure(trial_num, failure_mode, total_cost, time_to_obj, total_comms)
+    
     env.close()
     return [total_cost, total_time, stuck_count]
 
@@ -212,28 +215,41 @@ if __name__ == '__main__':
         print(f"\n{'='*40}")
         print(f"Optimizing for {mode_name}")
         print(f"{'='*40}")
+        
+        # Initial, nominal parameters
+        # Order: [W_dist, mu_dist, var_dist, mu_wind, var_wind, W_angle, var_wind_angle_change]
+        mu = np.array([
+            1.0,                            # W_dist
+            0.50,                           # mu_dist
+            0.50,                           # var_dist
+            0.25,                           # mu_wind
+            0.01,                           # var_wind
+            1,                              # W_angle
+            1.0**2                          # var_wind_angle_change
+        ])
+
+        # Initial, "expert opinion" parameters
+        # Order: [W_dist, mu_dist, var_dist, mu_wind, var_wind, W_angle, var_wind_angle_change]
+        #mu = np.array([
+        #    0,                              # W_dist
+        #    0.90,                           # mu_dist
+        #    0.10,                           # var_dist
+        #    0.3,                            # mu_wind
+        #    0.01,                           # var_wind
+        #    0,                              # W_angle
+        #    0.01                            # var_wind_angle_change
+        #])
+        
+        # Initial covariance (std dev for exploration, set to 50% of mean initially)
+        sigma = np.abs(mu * 0.5)
+        sigma[sigma == 0] = 0.1 
 
         # Initialize CSV file for this failure mode
         csv_filename = f"AIS_params_{mode_name.replace(' ', '_')}.csv"
         with open(csv_filename, mode='w', newline='') as file:
             writer = csv.writer(file)
-            writer.writerow(['Iteration', 'mu_dist', 'var_dist', 'mu_wind', 'var_wind', 'w_bar', 'w_angle', 'var_wind_dir_change'])
-
-        # Initial parameters (means of the proposal distributions)
-        # Order: [mu_dist, var_dist, mu_wind, var_wind, w_bar, w_angle, var_wind_dir_change]
-        mu = np.array([
-            (int)(cfg.GRID_SIZE * 0.80),    # mu_dist
-            1.0**2,                         # var_dist
-            0.25,                           # mu_wind
-            0.0625**2,                      # var_wind
-            0.1,                            # w_bar
-            0.5,                            # w_angle
-            1.0**2                          # var_wind_dir_change
-        ])
-
-        # Initial covariance (std dev for exploration, set to 50% of mean initially)
-        sigma = np.abs(mu * 0.5)
-        sigma[sigma == 0] = 0.1 
+            writer.writerow(['Iteration', 'W_dist', 'mu_dist', 'var_dist', 'mu_wind', 'var_wind', 'W_angle', 'var_wind_angle_change']) # Header
+            writer.writerow([1] + mu.tolist()) # Initial parameters (Iteration 1)
 
         num_iterations = 100
         samples_per_iter = 20
@@ -248,13 +264,13 @@ if __name__ == '__main__':
                 trial_counter += 1
                 # Sample parameters and enforce constraints
                 x_candidate = np.random.normal(mu, sigma)
-                x_candidate[0] = np.clip(x_candidate[0], 0, cfg.GRID_SIZE)
-                x_candidate[1] = max(0.1, x_candidate[1])
-                x_candidate[2] = np.clip(x_candidate[2], 0, 0.3)
-                x_candidate[3] = max(0.01, x_candidate[3])
-                x_candidate[4] = np.clip(x_candidate[4], 0.0, 1.0)
-                x_candidate[5] = np.clip(x_candidate[5], 0.0, 1.0)
-                x_candidate[6] = max(0.01, x_candidate[6])
+                x_candidate[0] = np.clip(x_candidate[0], 0, 1)   # W_dist
+                x_candidate[1] = np.clip(x_candidate[0], 0, 1)  # mu_dist
+                x_candidate[2] = np.clip(x_candidate[0], 0.01, 1) # var_dist
+                x_candidate[3] = np.clip(x_candidate[2], 0, 0.3)  # mu_wind
+                x_candidate[4] = max(0.01, x_candidate[4]) # var_wind
+                x_candidate[5] = np.clip(x_candidate[5], 0.0, 1.0)  # W_angle
+                x_candidate[6] = max(0.01, x_candidate[6])# var_wind_angle_change
 
                 population.append(x_candidate)
                 # Submit simulation to process pool. Pass None for tracker since save_data=False
@@ -272,15 +288,21 @@ if __name__ == '__main__':
 
             # Update parameters (Smoothing with alpha)
             alpha = 0.7
+            prev_mu = mu.copy()
             mu = alpha * np.mean(elites, axis=0) + (1 - alpha) * mu
             sigma = alpha * np.std(elites, axis=0) + (1 - alpha) * sigma
             
             # Save updated parameters to CSV
             with open(csv_filename, mode='a', newline='') as file:
                 writer = csv.writer(file)
-                writer.writerow([i + 1] + mu.tolist())
+                writer.writerow([i + 2] + mu.tolist())
             
             print(f"Iter {i+1}: Max Score={np.max(scores):.2f}, Mean Score={np.mean(scores):.2f}")
+
+            # Check for convergence: exit if all parameters changed by less than 0.0001
+            if np.all(np.abs(mu - prev_mu) < 0.0001):
+                print(f"Convergence reached at iteration {i+1} (delta < 0.0001).")
+                break
         
         print(f"Best Params for {mode_name}: {mu}")
     executor.shutdown()

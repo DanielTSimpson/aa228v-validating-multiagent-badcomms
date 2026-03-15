@@ -13,7 +13,7 @@ RENDER_PAUSE = 0.05
 
 #  ===== Environment parameters ===== 
 GRID_SIZE = 50  # Size of the NxN grid
-WIND_SPEED = 0.05 # Probability of agents drifting after an action
+WIND_SPEED = np.random.normal(0.25, 0.05**2) # Probability of agents drifting after an action
 WIND_DIRECTION = 2*np.pi*np.random.random() # Direction of the wind in radians (CCW)
 
 # ===== Drone parameters ===== 
