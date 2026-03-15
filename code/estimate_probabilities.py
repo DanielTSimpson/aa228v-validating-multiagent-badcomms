@@ -41,24 +41,7 @@ def get_probability_estimate(params_history, mode_idx, num_samples=50):
     mu_q = params_history[-1, 1:]
     
     # p is nominal distribution
-    mu_p = np.array([
-            1.0,                            # W_dist
-            0.50,                           # mu_dist
-            0.50,                           # var_dist
-            0.25,                           # mu_wind
-            0.01,                           # var_wind
-            0.0,                            # W_angle (Random)
-            1.0**2                          # var_wind_angle_change
-    ])
-    mu_q = np.array([
-        0,                              # W_dist
-        0.90,                           # mu_dist
-        0.10,                           # var_dist
-        0.3,                            # mu_wind
-        0.01,                           # var_wind
-        0,                              # W_angle
-        0.01                            # var_wind_angle_change
-    ])
+    mu_p = cfg.MU_P
 
     sigma = np.abs(mu_p * 0.2)
     sigma[sigma < 0.1] = 0.1 

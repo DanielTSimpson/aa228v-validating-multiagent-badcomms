@@ -196,24 +196,8 @@ def run_simulation(x:list = [], trial_num = 0, render=0, save_gif=False):
 
 
 if __name__ == '__main__':
-    mu_q = np.array([
-        0,                              # W_dist
-        0.90,                           # mu_dist
-        0.10,                           # var_dist
-        0.3,                            # mu_wind
-        0.01,                           # var_wind
-        0,                              # W_angle
-        0.01                            # var_wind_angle_change
-    ])
-    mu_p = np.array([
-        1.0,                            # W_dist
-        0.50,                           # mu_dist
-        0.50,                           # var_dist
-        0.25,                           # mu_wind
-        0.01,                           # var_wind
-        1,                              # W_angle
-        1.0**2                          # var_wind_angle_change
-    ])
+    mu_q = cfg.MU_Q
+    mu_p = cfg.MU_P
     
     num_trials = 1000
     failure_counts = {0: 0, 1: 0, 2: 0, 3: 0}

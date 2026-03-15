@@ -29,3 +29,25 @@ EXPLORATION_BONUS = 50.0  # Bonus reward for exploring new cells, promotes activ
 COMMUNICATION_COST = 3.0
 MOVEMENT_COST = 1.0
 TIME_COST = 3.0
+
+# Initial, nominal parameters
+# Order: [W_dist, mu_dist, var_dist, mu_wind, var_wind, W_angle, var_wind_angle_change]
+MU_P = np.array([
+    1.0,                            # W_dist
+    0.50,                           # mu_dist
+    0.50,                           # var_dist
+    0.05,                           # mu_wind
+    0.01,                           # var_wind
+    1,                              # W_angle
+    1.0**2                          # var_wind_angle_change
+])
+
+MU_Q = np.array([
+    0,                              # W_dist
+    0.90,                           # mu_dist
+    0.10,                           # var_dist
+    0.3,                            # mu_wind
+    0.01,                           # var_wind
+    0,                              # W_angle
+    0.01                            # var_wind_angle_change
+])

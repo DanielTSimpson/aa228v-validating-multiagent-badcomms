@@ -23,31 +23,7 @@ if __name__ == '__main__':
         print(f"Optimizing for {mode_name}")
         print(f"{'='*40}")
         
-        # Initial, nominal parameters
-        # Order: [W_dist, mu_dist, var_dist, mu_wind, var_wind, W_angle, var_wind_angle_change]
-        mu_p = np.array([
-        1.0,                            # W_dist
-        0.50,                           # mu_dist
-        0.50,                           # var_dist
-        0.25,                           # mu_wind
-        0.01,                           # var_wind
-        1,                              # W_angle
-        1.0**2                          # var_wind_angle_change
-        ])
-
-        # Initial, "expert opinion" parameters
-        # Order: [W_dist, mu_dist, var_dist, mu_wind, var_wind, W_angle, var_wind_angle_change]
-        mu_q = np.array([
-        0,                              # W_dist
-        0.90,                           # mu_dist
-        0.10,                           # var_dist
-        0.3,                            # mu_wind
-        0.01,                           # var_wind
-        0,                              # W_angle
-        0.01                            # var_wind_angle_change
-        ])
-        
-        mu = mu_p
+        mu = cfg.MU_P
 
         sigma = np.abs(mu * 0.5)
         sigma[sigma == 0] = 0.1 
