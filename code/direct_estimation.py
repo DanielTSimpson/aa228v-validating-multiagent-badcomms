@@ -55,7 +55,7 @@ def run_simulation(x:list = [], trial_num = 0, render=0, save_gif=False):
     Returns:
         None
     """
-    print(f"Running Trial {trial_num}")
+    #print(f"Running Trial {trial_num}")
     # Initialize simulation parameters
     t_0 = cfg.INITIAL_TIME
     dt = cfg.TIME_STEP
@@ -203,7 +203,7 @@ if __name__ == '__main__':
     failure_counts = {0: 0, 1: 0, 2: 0, 3: 0}
     
     with ProcessPoolExecutor() as executor:
-        futures = [executor.submit(run_simulation, x = mu_q, trial_num=i, render=0, save_gif=False) for i in range(1, num_trials + 1)]
+        futures = [executor.submit(run_simulation, x = mu_p, trial_num=i, render=0, save_gif=False) for i in range(1, num_trials + 1)]
           
         for future in futures:
             failure_mode, *_ = future.result()

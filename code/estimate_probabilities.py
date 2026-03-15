@@ -50,11 +50,23 @@ def get_probability_estimate(params_history, mode_idx, num_samples=50):
     samples = [np.random.normal(mu_q, sigma) for _ in range(num_samples)]
     print(f"Starting Importance Sampling with {num_samples} samples in parallel...")
 
+    # Create safe clipped samples for simulation, but keep original for probability math
+    safe_samples = []
+    for x_i in samples:
+        safe_x = x_i.copy()
+        safe_x[0] = np.clip(safe_x[0], 0.0, 1.0)   # W_dist
+        safe_x[1] = np.clip(safe_x[1], 0.0, 1.0)   # mu_dist
+        safe_x[2] = max(0.01, safe_x[2])           # var_dist
+        safe_x[3] = np.clip(safe_x[3], 0.0, 0.3)   # mu_wind
+        safe_x[4] = max(0.01, safe_x[4])           # var_wind
+        safe_x[5] = np.clip(safe_x[5], 0.0, 1.0)   # W_angle
+        safe_x[6] = max(0.01, safe_x[6])           # var_wind_angle_change
+        safe_samples.append(safe_x.tolist())
 
     with ProcessPoolExecutor() as executor:
         futures = [
-            executor.submit(run_simulation, None, x_i.tolist(), i, 0, False, False)
-            for i, x_i in enumerate(samples)
+            executor.submit(run_simulation, safe_x, i, 0, False)
+            for i, safe_x in enumerate(safe_samples)
         ]
         results = [f.result() for f in futures]
 
@@ -79,7 +91,9 @@ def get_probability_estimate(params_history, mode_idx, num_samples=50):
         weight = np.exp(log_p - log_q)
         
         weights_times_indicator.append(weight * is_failure)
-
+    # Weight Clipping
+    weights_times_indicator = np.clip(weights_times_indicator, a_min=None, a_max=1.0)
+    
     return np.mean(weights_times_indicator), (raw_failures / num_samples)
 
 if __name__ == '__main__':
