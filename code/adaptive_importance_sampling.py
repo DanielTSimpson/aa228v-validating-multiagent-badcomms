@@ -23,7 +23,7 @@ if __name__ == '__main__':
         print(f"Optimizing for {mode_name}")
         print(f"{'='*40}")
         
-        mu = cfg.MU_P
+        mu = cfg.MU_Q
 
         sigma = np.abs(mu * 0.5)
         sigma[sigma == 0] = 0.1 
