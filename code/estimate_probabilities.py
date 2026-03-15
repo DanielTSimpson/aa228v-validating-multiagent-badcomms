@@ -24,7 +24,6 @@ def read_csv(filename):
             next(reader)  
             for row in reader:
                 if row:
-                    # Store the full row including Iteration and all params
                     data.append([float(x) for x in row])
     except FileNotFoundError:
         print(f"Error: File '{filename}' not found.")
@@ -37,22 +36,11 @@ def get_probability_estimate(params_history, mode_idx, num_samples=50):
     Estimates failure probability using Importance Sampling:
     P_fail = (1/m) * sum( (p(x)/q(x)) * I(x is failure) )
     """
-    # 1. Define distributions
-    # q is our proposal (the final optimized parameters from AIS)
-    mu_q = params_history[-1, 1:]
 
-    # What if proposal is only the "expert opinion"
-    mu_q = np.array([
-            0,                              # W_dist
-            0.90,                           # mu_dist
-            0.10,                           # var_dist
-            0.3,                            # mu_wind
-            0.01,                           # var_wind
-            1.0,                            # W_angle (Adversarial)
-            0.01                            # var_wind_angle_change
-        ])
+    # q is proposal
+    mu_q = params_history[-1, 1:]
     
-    # p is our nominal distribution (the first iteration parameters)
+    # p is nominal distribution
     mu_p = np.array([
             1.0,                            # W_dist
             0.50,                           # mu_dist
@@ -61,18 +49,25 @@ def get_probability_estimate(params_history, mode_idx, num_samples=50):
             0.01,                           # var_wind
             0.0,                            # W_angle (Random)
             1.0**2                          # var_wind_angle_change
-        ])
+    ])
+    mu_q = np.array([
+        0,                              # W_dist
+        0.90,                           # mu_dist
+        0.10,                           # var_dist
+        0.3,                            # mu_wind
+        0.01,                           # var_wind
+        0,                              # W_angle
+        0.01                            # var_wind_angle_change
+    ])
+
+    sigma = np.abs(mu_p * 0.2)
+    sigma[sigma < 0.1] = 0.1 
     
-    # Use a consistent standard deviation for the likelihood evaluation.
-    # AIS uses a search width; we'll use a 20% spread for the probability densities.
-    sigma = np.abs(mu_p * 0.2) + 1e-6 
-    
-    # 2. Pre-generate samples
+
     samples = [np.random.normal(mu_q, sigma) for _ in range(num_samples)]
-    
     print(f"Starting Importance Sampling with {num_samples} samples in parallel...")
 
-    # 3. Run simulations in parallel
+
     with ProcessPoolExecutor() as executor:
         futures = [
             executor.submit(run_simulation, None, x_i.tolist(), i, 0, False, False)
@@ -80,7 +75,7 @@ def get_probability_estimate(params_history, mode_idx, num_samples=50):
         ]
         results = [f.result() for f in futures]
 
-    # 4. Process results and calculate weights
+
     weights_times_indicator = []
     raw_failures = 0
     for x_i, result in zip(samples, results):
@@ -95,8 +90,7 @@ def get_probability_estimate(params_history, mode_idx, num_samples=50):
             
         raw_failures += is_failure
             
-        # Calculate likelihood ratio: w = p(x_i) / q(x_i)
-        # We use log-space for numerical stability before exponentiating
+        # Calculate likelihood ratio: w = p(x_i) / q(x_i) and use log-space for numerical stability before exponentiating
         log_p = np.sum(norm.logpdf(x_i, mu_p, sigma))
         log_q = np.sum(norm.logpdf(x_i, mu_q, sigma))
         weight = np.exp(log_p - log_q)
@@ -107,7 +101,7 @@ def get_probability_estimate(params_history, mode_idx, num_samples=50):
 
 if __name__ == '__main__':
     failure_modes = ["Total Cost", "Total Time", "Stuck Count"]
-    input_folder = "AIS_params_expert_start"
+    input_folder = "AIS_params_nominal_start"
 
     for mode_idx, mode_name in enumerate(failure_modes):
         filename = os.path.join(input_folder, f"AIS_params_{mode_name.replace(' ', '_')}.csv")

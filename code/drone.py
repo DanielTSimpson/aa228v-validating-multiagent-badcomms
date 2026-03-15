@@ -88,13 +88,18 @@ class Drone():
 
         self.drifted = False
         # Apply wind drift
-        if np.random.random() < self.env.wind_speed:
-            self.drifted = True
-            wind_dx = int(np.round(np.cos(self.env.wind_direction)))
-            wind_dy = int(np.round(np.sin(self.env.wind_direction)))
-            #print(f"Drone {self.drone_id} is drifting along {self.env.wind_direction*180/np.pi} degrees ({wind_dx},{wind_dy})\n")
-            x = max(0, min(self.env.grid_size - 1, x + wind_dx))
-            y = max(0, min(self.env.grid_size - 1, y + wind_dy))
+
+        if np.random.random() < abs(self.env.wind_speed):
+            cos_wind = np.cos(self.env.wind_direction)
+            sin_wind = np.sin(self.env.wind_direction)
+            
+            dx = int(np.sign(cos_wind)) if np.random.random() < abs(cos_wind) else 0
+            dy = int(np.sign(sin_wind)) if np.random.random() < abs(sin_wind) else 0
+            
+            if dx != 0 or dy != 0:
+                self.drifted = True
+                x = max(0, min(self.env.grid_size - 1, x + dx))
+                y = max(0, min(self.env.grid_size - 1, y + dy))
 
         self.position = np.array([x, y])
         
@@ -182,14 +187,15 @@ class Drone():
             nx = max(0, min(self.env.grid_size - 1, position[0] + dx))
             ny = max(0, min(self.env.grid_size - 1, position[1] + dy))
             
-            # R(b, a)
-            bonus = self.exploration_bonus if (nx, ny) not in visited else -self.exploration_bonus
-            reward_action = bonus - self.movement_cost - self.time_cost
-            
             # P(o|b, a)
             half = self.window_size // 2
             x_min, x_max = max(0, nx - half), min(self.env.grid_size, nx + half + 1)
             y_min, y_max = max(0, ny - half), min(self.env.grid_size, ny + half + 1)
+            
+            # R(b, a) - Bonus granted if the new window reveals unvisited cells
+            new_cells = sum(1 for r in range(x_min, x_max) for c in range(y_min, y_max) if (r, c) not in visited)
+            bonus = self.exploration_bonus if new_cells > 0 else 0
+            reward_action = bonus - self.movement_cost - self.time_cost
             
             prob_see_fire = np.sum(belief.belief_grid[x_min:x_max, y_min:y_max])
             prob_see_nothing = 1.0 - prob_see_fire
@@ -238,15 +244,16 @@ class Drone():
             nx = max(0, min(self.env.grid_size - 1, self.x + dx))
             ny = max(0, min(self.env.grid_size - 1, self.y + dy))
             
-            # --- R(b, a) ---
-            bonus = self.exploration_bonus if (nx, ny) not in self.visited_cells else 0
-
-            reward_action = bonus - self.movement_cost - self.time_cost
-            
             # --- P(o|b, a) ---
             half = self.window_size // 2
             x_min, x_max = max(0, nx - half), min(self.env.grid_size, nx + half + 1)
             y_min, y_max = max(0, ny - half), min(self.env.grid_size, ny + half + 1)
+            
+            # --- R(b, a) ---
+            # Bonus granted if the new window reveals unvisited cells
+            new_cells = sum(1 for r in range(x_min, x_max) for c in range(y_min, y_max) if (r, c) not in self.visited_cells)
+            bonus = self.exploration_bonus if new_cells > 0 else 0
+            reward_action = bonus - self.movement_cost - self.time_cost
             
             # P(o = Fire)
             prob_see_fire = np.sum(self.belief_state.belief_grid[x_min:x_max, y_min:y_max])

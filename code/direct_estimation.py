@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 from drone import Drone
 from environment import SearchEnv
 from belief import Belief
-from failtracker import FailTracker
+from concurrent.futures import ProcessPoolExecutor
 import config as cfg
 
 
@@ -44,15 +44,13 @@ def initialize_drones(num_drones, env, window_size):
     return drones
 
 
-def run_simulation(tracker, x:list = [], trial_num = 0, render=0, save_gif=False, save_data=True):
+def run_simulation(x:list = [], trial_num = 0, render=0, save_gif=False):
     """
     Run the complete Dec-POMDP multi-agent simulation
     Args:
-        tracker: FailTracker object for getting and recording failure modes
         x: List of disturbances  
         render: Int to show the gridworld plot render (0 - Show nothing, 1 - Show status updates, 2 - Show all)
         save_gif: Boolean to save the set of plots as a .gif
-        save_data: Boolean to save the tracking info to .csv
         
     Returns:
         None
@@ -74,7 +72,7 @@ def run_simulation(tracker, x:list = [], trial_num = 0, render=0, save_gif=False
     if save_gif:
         env.record_frames = True
 
-    # Initialize the drone(s)
+    # Initialize the drones
     drone_window_size = cfg.OBSERVATION_WINDOW_SIZE
     drones = initialize_drones(cfg.NUM_DRONES, env, drone_window_size)
 
@@ -86,7 +84,7 @@ def run_simulation(tracker, x:list = [], trial_num = 0, render=0, save_gif=False
     # === Inject disturbances, x into Drone A ===
     droneA_old_pos = drones[0].position
     theta_A = np.random.uniform(0, np.pi / 2) # Choose a random initial angle from Uniform(0, 90deg)
-    distance_A = np.random.normal(int(cfg.GRID_SIZE * x[1]), int(cfg.GRID_SIZE * x[2]**2)) # Choose a random initial distance from Normal(x[0], x[1])
+    distance_A = np.random.normal(int(cfg.GRID_SIZE * x[1]), int(cfg.GRID_SIZE * np.sqrt(x[2]))) # Choose a random initial distance from Normal(x[0], x[1])
     
     # Map polar coordinates to discrete grid relative to fire
     fire_x, fire_y = env.fire_pos
@@ -119,8 +117,8 @@ def run_simulation(tracker, x:list = [], trial_num = 0, render=0, save_gif=False
     drones[1].history = [drones[1].state]
 
     # === Inject disturbances, x into Environment's Wind ===
-    env.wind_speed = np.random.normal(x[3], x[4]**2) # Choose a random initial wind speed from Normal(x[3], x[4])
-    env.wind_direction = x[5]*2*np.pi*np.random.random() + (1-x[5])*np.random.normal((theta_A + theta_B)/2, x[6]**2)
+    env.wind_speed = np.random.normal(x[3], np.sqrt(x[4]))
+    env.wind_direction = x[5]*2*np.pi*np.random.random() + (1-x[5])*np.random.normal((theta_A + theta_B)/2, np.sqrt(x[6]))
 
     # Main simulation loop
     for i in range(N):
@@ -128,21 +126,20 @@ def run_simulation(tracker, x:list = [], trial_num = 0, render=0, save_gif=False
         if i > 0 and i % 10 == 0:
             theta_A = np.arctan2(drones[0].position[1] - env.fire_pos[1], drones[0].position[0] - env.fire_pos[0])
             theta_B = np.arctan2(drones[1].position[1] - env.fire_pos[1], drones[1].position[0] - env.fire_pos[0])
-            env.wind_direction = x[5]*2*np.pi*np.random.random() + (1-x[5])*np.random.normal((theta_A + theta_B)/2, x[6]**2)
-            if render == 1:
+            env.wind_direction = x[5]*2*np.pi*np.random.random() + (1-x[5])*np.random.normal((theta_A + theta_B)/2, np.sqrt(x[6]))
+            if render == 1 or render == 2:
                 print(f"\tWind changed direction to {env.wind_direction*180/np.pi:.1f} degrees")
 
-        # Render current state
         if render == 2 or save_gif:
             env.render(drones)
             if render == 2:
                 plt.pause(render_pause)
         
         # Check for budget failure (Mode 1)
-        # If any drone runs out of budget, we consider it a failure for the team/mission
         min_budget = min(d.budget for d in drones)
         if min_budget <= 0:
             failure_mode = 1
+            if render == 1 or render == 2: print("\tFAILURE: Max budget exceeded")
             time_to_obj = i
             break
         
@@ -150,7 +147,7 @@ def run_simulation(tracker, x:list = [], trial_num = 0, render=0, save_gif=False
         if env.fire_extinguished:
             failure_mode = 0
             time_to_obj = i
-            if render == 1:
+            if render == 1 or render == 2:
                 print(f"\tFire extinguished!")
                 if render == 2:
                     env.render(drones)
@@ -174,18 +171,17 @@ def run_simulation(tracker, x:list = [], trial_num = 0, render=0, save_gif=False
                     drone.receive_telemetry(packet)
         
         # Check for stuck failure (Mode 3)
-        if any(d.stuck_count >= 10 for d in drones):
+        if any(d.stuck_count >= 20 for d in drones):
             failure_mode = 3
             time_to_obj = i
-            if render == 1:
+            if render == 1 or render == 2:
                 print("\tFAILURE: Drones got Stuck")
             break
 
-    if failure_mode == 2 and render == 1:
+    if failure_mode == 2 and (render == 1 or render == 2):
         print("\tFAILURE: Exceeded max sim time")
 
     # Calculate Total Cost (MAX_BUDGET - remaining budget)
-    # We use the minimum remaining budget to represent the highest cost incurred by any agent
     final_min_budget = min(d.budget for d in drones)
     total_cost = cfg.MAX_BUDGET - final_min_budget
     total_time = time_to_obj*dt
@@ -195,15 +191,11 @@ def run_simulation(tracker, x:list = [], trial_num = 0, render=0, save_gif=False
         gif_fps = int(2.0 / cfg.RENDER_PAUSE) if cfg.RENDER_PAUSE > 0 else 10
         env.save_gif(f"simulation_trial_{trial_num}.gif", fps=gif_fps)
 
-    if save_data:
-        tracker.log_failure(trial_num, failure_mode, total_cost, time_to_obj, total_comms)
-
     env.close()
-    return [total_cost, total_time, stuck_count]
+    return failure_mode, total_cost, total_time, stuck_count
 
 
 if __name__ == '__main__':
-    tracker = FailTracker()
     mu_q = np.array([
         0,                              # W_dist
         0.90,                           # mu_dist
@@ -222,5 +214,26 @@ if __name__ == '__main__':
         1,                              # W_angle
         1.0**2                          # var_wind_angle_change
     ])
-    for i in range(1, 1000):
-        run_simulation(tracker, x = mu_p, trial_num=i, render=0, save_gif=False)
+    
+    num_trials = 1000
+    failure_counts = {0: 0, 1: 0, 2: 0, 3: 0}
+    
+    with ProcessPoolExecutor() as executor:
+        futures = [executor.submit(run_simulation, x = mu_q, trial_num=i, render=0, save_gif=False) for i in range(1, num_trials + 1)]
+          
+        for future in futures:
+            failure_mode, *_ = future.result()
+            failure_counts[failure_mode] += 1
+        
+    print("\n" + "="*40)
+    print(f"Direct Estimation Results (Parallel Execution - {num_trials} Trials)")
+    print("="*40)
+    mode_names = {
+        0: "No Failure",
+        1: "Budget runs out (Total Cost)",
+        2: "Out of Time (Total Time)",
+        3: "Drones got Stuck (Stuck Count)"
+    }
+    for mode, count in failure_counts.items():
+        prob = count / num_trials
+        print(f"{mode_names[mode]}: {prob:.2%} ({count}/{num_trials})")
