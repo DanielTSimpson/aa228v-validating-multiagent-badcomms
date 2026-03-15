@@ -7,7 +7,7 @@ Centralized place for all simulation parameters
 # ===== Simulation (main) parameters ===== 
 INITIAL_TIME = 0.0
 TIME_STEP = 0.05
-MAX_SIMULATION_TIME = 50.0
+MAX_SIMULATION_TIME = 250.0
 MAX_BUDGET = 5000
 RENDER_PAUSE = 0.05
 

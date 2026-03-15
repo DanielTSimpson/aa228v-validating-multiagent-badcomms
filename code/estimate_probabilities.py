@@ -1,7 +1,10 @@
 import csv
+import os
+from concurrent.futures import ProcessPoolExecutor
 import numpy as np
 from scipy.stats import norm
 from adaptive_importance_sampling import run_simulation
+import config as cfg
 
 def read_csv(filename):
     """
@@ -29,7 +32,7 @@ def read_csv(filename):
 
     return np.array(data)
 
-def get_probability_estimate(params_history, num_samples=50):
+def get_probability_estimate(params_history, mode_idx, num_samples=50):
     """
     Estimates failure probability using Importance Sampling:
     P_fail = (1/m) * sum( (p(x)/q(x)) * I(x is failure) )
@@ -37,30 +40,61 @@ def get_probability_estimate(params_history, num_samples=50):
     # 1. Define distributions
     # q is our proposal (the final optimized parameters from AIS)
     mu_q = params_history[-1, 1:]
+
+    # What if proposal is only the "expert opinion"
+    mu_q = np.array([
+            0,                              # W_dist
+            0.90,                           # mu_dist
+            0.10,                           # var_dist
+            0.3,                            # mu_wind
+            0.01,                           # var_wind
+            1.0,                            # W_angle (Adversarial)
+            0.01                            # var_wind_angle_change
+        ])
+    
     # p is our nominal distribution (the first iteration parameters)
-    mu_p = params_history[0, 1:]
+    mu_p = np.array([
+            1.0,                            # W_dist
+            0.50,                           # mu_dist
+            0.50,                           # var_dist
+            0.25,                           # mu_wind
+            0.01,                           # var_wind
+            0.0,                            # W_angle (Random)
+            1.0**2                          # var_wind_angle_change
+        ])
     
     # Use a consistent standard deviation for the likelihood evaluation.
     # AIS uses a search width; we'll use a 20% spread for the probability densities.
     sigma = np.abs(mu_p * 0.2) + 1e-6 
+    
+    # 2. Pre-generate samples
+    samples = [np.random.normal(mu_q, sigma) for _ in range(num_samples)]
+    
+    print(f"Starting Importance Sampling with {num_samples} samples in parallel...")
 
-    m = num_samples
+    # 3. Run simulations in parallel
+    with ProcessPoolExecutor() as executor:
+        futures = [
+            executor.submit(run_simulation, None, x_i.tolist(), i, 0, False, False)
+            for i, x_i in enumerate(samples)
+        ]
+        results = [f.result() for f in futures]
+
+    # 4. Process results and calculate weights
     weights_times_indicator = []
-
-    print(f"Starting Importance Sampling with {m} samples...")
-
-    for i in range(m):
-        # Sample a candidate disturbance vector from the proposal distribution q
-        x_i = np.random.normal(mu_q, sigma)
-        
-        # Run simulation (render=0 for speed)
-        # Returns [total_cost, total_time, stuck_count]
-        result = run_simulation(None, x_i.tolist(), trial_num=i, render=0, save_data=False)
-        stuck_count = result[2]
-        
-        # Indicator function: 1 if failure occurs (Stuck Count >= 10), else 0
-        is_failure = 1 if stuck_count >= 10 else 0
-        
+    raw_failures = 0
+    for x_i, result in zip(samples, results):
+        # Indicator function based on failure mode
+        is_failure = 0
+        if mode_idx == 0:   # Total Cost
+            if result[0] >= cfg.MAX_BUDGET: is_failure = 1
+        elif mode_idx == 1: # Total Time
+            if result[1] >= cfg.MAX_SIMULATION_TIME: is_failure = 1
+        elif mode_idx == 2: # Stuck Count
+            if result[2] >= 10: is_failure = 1
+            
+        raw_failures += is_failure
+            
         # Calculate likelihood ratio: w = p(x_i) / q(x_i)
         # We use log-space for numerical stability before exponentiating
         log_p = np.sum(norm.logpdf(x_i, mu_p, sigma))
@@ -69,21 +103,26 @@ def get_probability_estimate(params_history, num_samples=50):
         
         weights_times_indicator.append(weight * is_failure)
 
-    return np.mean(weights_times_indicator)
+    return np.mean(weights_times_indicator), (raw_failures / num_samples)
 
 if __name__ == '__main__':
-    filename = "AIS_params_Stuck_Count.csv"
-    params_history = read_csv(filename)
-    
-    if params_history.size > 0:
-        print("Successfully read parameters history:")
-        print(params_history)
+    failure_modes = ["Total Cost", "Total Time", "Stuck Count"]
+    input_folder = "AIS_params_expert_start"
 
-        # The final set of parameters is the last row in the file
-        final_params = params_history[-1]
-        print("\nFinal estimated parameters (mu):")
-        print(final_params)
+    for mode_idx, mode_name in enumerate(failure_modes):
+        filename = os.path.join(input_folder, f"AIS_params_{mode_name.replace(' ', '_')}.csv")
+        params_history = read_csv(filename)
+        
+        if params_history.size > 0:
+            print(f"\n{'='*40}")
+            print(f"Estimating Probability for: {mode_name}")
+            print(f"{'='*40}")
 
-        # Estimate the actual probability
-        p_fail = get_probability_estimate(params_history)
-        print(f"\nEstimated Probability of Failure: {p_fail:.6e}")
+            # The final set of parameters is the last row in the file
+            final_params = params_history[-1, 1:]
+            print(f"Final estimated parameters (mu):\n{final_params}")
+
+            # Estimate the actual probability
+            p_fail_nominal, p_fail_expert = get_probability_estimate(params_history, mode_idx)
+            print(f"Estimated Probability of Failure (Nominal p): {p_fail_nominal:.6e}")
+            print(f"Failure Rate of Proposal Distribution (Expert q): {p_fail_expert:.2%}")

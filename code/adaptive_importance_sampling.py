@@ -121,7 +121,7 @@ def run_simulation(tracker, x:list = [], trial_num = 0, render=0, save_gif=False
 
     # === Inject disturbances, x into Environment's Wind ===
     env.wind_speed = np.random.normal(x[3], x[4]**2) # Choose a random initial wind speed from Normal(x[3], x[4])
-    env.wind_direction = x[5]*np.random.normal((theta_A + theta_B)/2, x[6]**2) + (1-x[5])*2*np.pi*np.random.random()
+    env.wind_direction = x[5]*2*np.pi*np.random.random() + (1-x[5])*np.random.normal((theta_A + theta_B)/2, x[6]**2)
 
     # Main simulation loop
     for i in range(N):
@@ -129,7 +129,7 @@ def run_simulation(tracker, x:list = [], trial_num = 0, render=0, save_gif=False
         if i > 0 and i % 10 == 0:
             theta_A = np.arctan2(drones[0].position[1] - env.fire_pos[1], drones[0].position[0] - env.fire_pos[0])
             theta_B = np.arctan2(drones[1].position[1] - env.fire_pos[1], drones[1].position[0] - env.fire_pos[0])
-            env.wind_direction = x[5]*np.random.normal((theta_A + theta_B)/2, x[6]**2) + (1-x[5])*2*np.pi*np.random.random()
+            env.wind_direction = x[5]*2*np.pi*np.random.random() + (1-x[5])*np.random.normal((theta_A + theta_B)/2, x[6]**2)
             if render == 1:
                 print(f"\tWind changed direction to {env.wind_direction*180/np.pi:.1f} degrees")
 
@@ -218,19 +218,19 @@ if __name__ == '__main__':
         
         # Initial, nominal parameters
         # Order: [W_dist, mu_dist, var_dist, mu_wind, var_wind, W_angle, var_wind_angle_change]
-        #mu = np.array([
-        #    1.0,                            # W_dist
-        #    0.50,                           # mu_dist
-        #    0.50,                           # var_dist
-        #    0.25,                           # mu_wind
-        #    0.01,                           # var_wind
-        #    1,                              # W_angle
-        #    1.0**2                          # var_wind_angle_change
-        #])
+        mu_p = np.array([
+            1.0,                            # W_dist
+            0.50,                           # mu_dist
+            0.50,                           # var_dist
+            0.25,                           # mu_wind
+            0.01,                           # var_wind
+            1,                              # W_angle
+            1.0**2                          # var_wind_angle_change
+        ])
 
         # Initial, "expert opinion" parameters
         # Order: [W_dist, mu_dist, var_dist, mu_wind, var_wind, W_angle, var_wind_angle_change]
-        mu = np.array([
+        mu_q = np.array([
             0,                              # W_dist
             0.90,                           # mu_dist
             0.10,                           # var_dist
@@ -240,6 +240,8 @@ if __name__ == '__main__':
             0.01                            # var_wind_angle_change
         ])
         
+        mu = mu_p
+
         # Initial covariance (std dev for exploration, set to 50% of mean initially)
         sigma = np.abs(mu * 0.5)
         sigma[sigma == 0] = 0.1 
