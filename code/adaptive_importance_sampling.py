@@ -240,7 +240,7 @@ if __name__ == '__main__':
             0.01                            # var_wind_angle_change
         ])
         
-        mu = mu_p
+        mu = mu_q
 
         # Initial covariance (std dev for exploration, set to 50% of mean initially)
         sigma = np.abs(mu * 0.5)
