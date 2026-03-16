@@ -39,7 +39,7 @@ def get_probability_estimate(params_history, mode_idx, num_samples=50):
 
     # q is proposal
     mu_q = params_history[-1, 1:]
-    
+    mu_q = cfg.MU_Q
     # p is nominal distribution
     mu_p = cfg.MU_P
 
@@ -57,7 +57,7 @@ def get_probability_estimate(params_history, mode_idx, num_samples=50):
         safe_x[0] = np.clip(safe_x[0], 0.0, 1.0)   # W_dist
         safe_x[1] = np.clip(safe_x[1], 0.0, 1.0)   # mu_dist
         safe_x[2] = max(0.01, safe_x[2])           # var_dist
-        safe_x[3] = np.clip(safe_x[3], 0.0, 0.3)   # mu_wind
+        safe_x[3] = np.clip(safe_x[3], 0.0, 1.0)   # mu_wind
         safe_x[4] = max(0.01, safe_x[4])           # var_wind
         safe_x[5] = np.clip(safe_x[5], 0.0, 1.0)   # W_angle
         safe_x[6] = max(0.01, safe_x[6])           # var_wind_angle_change
@@ -74,14 +74,15 @@ def get_probability_estimate(params_history, mode_idx, num_samples=50):
     weights_times_indicator = []
     raw_failures = 0
     for x_i, result in zip(samples, results):
+        failure_mode = result[0]
         # Indicator function based on failure mode
         is_failure = 0
         if mode_idx == 0:   # Total Cost
-            if result[0] >= cfg.MAX_BUDGET: is_failure = 1
+            if failure_mode == 1: is_failure = 1
         elif mode_idx == 1: # Total Time
-            if result[1] >= cfg.MAX_SIMULATION_TIME: is_failure = 1
+            if failure_mode == 2: is_failure = 1
         elif mode_idx == 2: # Stuck Count
-            if result[2] >= 10: is_failure = 1
+            if failure_mode == 3: is_failure = 1
             
         raw_failures += is_failure
             
@@ -98,7 +99,7 @@ def get_probability_estimate(params_history, mode_idx, num_samples=50):
 
 if __name__ == '__main__':
     failure_modes = ["Total Cost", "Total Time", "Stuck Count"]
-    input_folder = "AIS_params_nominal_start"
+    input_folder = "AIS_params_expert_start"
 
     for mode_idx, mode_name in enumerate(failure_modes):
         filename = os.path.join(input_folder, f"AIS_params_{mode_name.replace(' ', '_')}.csv")

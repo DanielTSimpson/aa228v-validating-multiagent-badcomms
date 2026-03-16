@@ -9,7 +9,7 @@ INITIAL_TIME = 0.0
 TIME_STEP = 0.05
 MAX_SIMULATION_TIME = 250.0
 MAX_BUDGET = 5000
-RENDER_PAUSE = 0.05
+RENDER_PAUSE = 0.2
 
 #  ===== Environment parameters ===== 
 GRID_SIZE = 25  # Size of the NxN grid
@@ -39,7 +39,7 @@ MU_P = np.array([
     0.05,                           # mu_wind
     0.01,                           # var_wind
     1,                              # W_angle
-    1.0**2                          # var_wind_angle_change
+    1.0                             # var_wind_angle_change
 ])
 
 MU_Q = np.array([

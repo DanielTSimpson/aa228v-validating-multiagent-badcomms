@@ -49,7 +49,7 @@ if __name__ == '__main__':
                 x_candidate[0] = np.clip(x_candidate[0], 0, 1)   # W_dist
                 x_candidate[1] = np.clip(x_candidate[1], 0, 1)  # mu_dist
                 x_candidate[2] = np.clip(x_candidate[2], 0.01, 1) # var_dist
-                x_candidate[3] = np.clip(x_candidate[3], 0, 0.3)  # mu_wind
+                x_candidate[3] = np.clip(x_candidate[3], 0, 1.0)  # mu_wind
                 x_candidate[4] = max(0.01, x_candidate[4]) # var_wind
                 x_candidate[5] = np.clip(x_candidate[5], 0.0, 1.0)  # W_angle
                 x_candidate[6] = max(0.01, x_candidate[6])# var_wind_angle_change
